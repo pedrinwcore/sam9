@@ -171,6 +171,18 @@ npm run dev:backend   # Backend na porta 3001
 - **Backend API:** http://localhost:3001/api
 - **Health Check:** http://localhost:3001/api/health
 
+### URLs do Sistema
+
+Após o deploy, o sistema estará disponível em:
+
+- **Frontend:** http://samhost.wcore.com.br
+- **Backend API:** http://samhost.wcore.com.br:3001/api
+- **Health Check:** http://samhost.wcore.com.br:3001/api/health
+- **Streaming RTMP:** rtmp://samhost.wcore.com.br:1935/samhost
+- **Streaming HLS:** http://samhost.wcore.com.br:1935/samhost/{usuario}_live/playlist.m3u8
+- **Vídeos VOD:** Acessados via porta 6980 (gerenciado pelo backend)
+- **Streams ao vivo:** Porta 1935 para RTMP/HLS
+
 ## 🔗 Integração WHMCS
 
 ### Configuração do Módulo WHMCS

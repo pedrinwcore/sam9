@@ -81,6 +81,11 @@ pm2 startup
 - **Frontend:** http://samhost.wcore.com.br
 - **Backend API:** http://samhost.wcore.com.br:3001/api
 - **Health Check:** http://samhost.wcore.com.br:3001/api/health
+- **Arquitetura de Portas:**
+  - **Porta 6980:** Acesso a vídeos VOD (Video on Demand) via Wowza
+  - **Porta 1935:** Transmissões RTMP e streams HLS ao vivo
+  - **Porta 3001:** API do backend
+  - **Porta 80:** Frontend web
 
 ### Banco de Dados
 - **Host:** 104.251.209.68:35689
