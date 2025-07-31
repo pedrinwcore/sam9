@@ -128,36 +128,6 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
     }
   };
 
-  // Função para tentar URLs alternativas em caso de erro
-  const tryAlternativeUrls = async (originalSrc: string) => {
-    const alternatives = [
-      originalSrc,
-      // Tentar diferentes formatos de URL
-      originalSrc.replace('/content/', '/content/'),
-      originalSrc.replace('http://51.222.156.223:1935/vod/_definst_', '/content'),
-      originalSrc.replace('http://51.222.156.223:1935/vod/', '/content/'),
-      // Tentar URL direta do Wowza
-      `http://51.222.156.223:1935/vod/_definst_${originalSrc.replace('/content', '')}`,
-      // Tentar URL do servidor de produção
-      `http://samhost.wcore.com.br:1935/vod/_definst_${originalSrc.replace('/content', '')}`
-    ];
-
-    for (const url of alternatives) {
-      try {
-        console.log(`🔄 Testando URL alternativa: ${url}`);
-        const response = await fetch(url, { method: 'HEAD' });
-        if (response.ok) {
-          console.log(`✅ URL alternativa funcionando: ${url}`);
-          return url;
-        }
-      } catch (error) {
-        console.log(`❌ URL alternativa falhou: ${url}`);
-      }
-    }
-
-    return originalSrc; // Retornar original se nenhuma alternativa funcionar
-  };
-
   // Inicializar player
   useEffect(() => {
     const video = videoRef.current;
@@ -212,32 +182,12 @@ const UniversalVideoPlayer: React.FC<UniversalVideoPlayerProps> = ({
       setIsMuted(video.muted);
     };
 
-    const handleError = async (e: Event) => {
+    const handleError = (e: Event) => {
       setIsLoading(false);
       setConnectionStatus('disconnected');
       const target = e.target as HTMLVideoElement;
       
       console.error('❌ Erro no vídeo:', target.error);
-      
-      // Tentar URLs alternativas apenas se não tentou ainda
-      if (src && retryCount < 3) {
-        console.log(`🔄 Tentativa ${retryCount + 1} de 3 - Tentando URLs alternativas...`);
-        setRetryCount(prev => prev + 1);
-        
-        const alternativeUrl = await tryAlternativeUrls(src);
-        if (alternativeUrl !== src) {
-          console.log(`🔄 Tentando URL alternativa: ${alternativeUrl}`);
-          // Recriar elemento de vídeo para forçar reload
-          const newVideo = document.createElement('video');
-          newVideo.className = target.className;
-          newVideo.controls = target.controls;
-          newVideo.autoplay = target.autoplay;
-          newVideo.muted = target.muted;
-          newVideo.src = alternativeUrl;
-          target.parentNode?.replaceChild(newVideo, target);
-          return;
-        }
-      }
       
       const errorMsg = target.error ? 
         `Erro ${target.error.code}: ${target.error.message}` : 

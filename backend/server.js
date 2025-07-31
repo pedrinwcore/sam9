@@ -94,123 +94,47 @@
         res.setHeader('Cache-Control', 'public, max-age=3600');
       }
       
-      // Para arquivos de vídeo diretos, tentar servir do sistema de arquivos local primeiro
-      if (isVideoFile) {
-        const fs = require('fs');
-        const path = require('path');
-        
-        // Tentar encontrar o arquivo localmente (para desenvolvimento)
-        const localPaths = [
-          path.join(__dirname, '../uploads', requestPath),
-          path.join(__dirname, '../content', requestPath),
-          path.join('/tmp/video-uploads', path.basename(requestPath))
-        ];
-        
-        for (const localPath of localPaths) {
-          if (fs.existsSync(localPath)) {
-            console.log(`📁 Servindo arquivo local: ${localPath}`);
-            return res.sendFile(localPath);
-          }
-        }
-        
-        console.log(`🔍 Arquivo não encontrado localmente, tentando Wowza: ${requestPath}`);
-      }
-      
-      // Se não encontrou localmente, tentar no Wowza
+      // Configurar URL do Wowza baseado no tipo de arquivo
       const fetch = require('node-fetch');
       const isProduction = process.env.NODE_ENV === 'production';
       const wowzaHost = isProduction ? 'samhost.wcore.com.br' : '51.222.156.223';
-      const wowzaPort = isProduction ? 1935 : 8080; // Porta HTTP do Wowza
       
       let wowzaUrl;
       if (isStreamFile) {
-        // Para streams HLS/DASH
+        // Para streams HLS/DASH - usar porta 1935
         wowzaUrl = `http://${wowzaHost}:1935${requestPath}`;
       } else {
-        // Para arquivos de vídeo diretos - tentar múltiplas URLs
-        const possibleUrls = [
-          `http://${wowzaHost}:${wowzaPort}/content${requestPath}`,
-          `http://${wowzaHost}:8086${requestPath}`,
-          `http://${wowzaHost}:8080${requestPath}`,
-          `http://${wowzaHost}:1935/vod/_definst_${requestPath}`,
-          `http://${wowzaHost}:1935/vod${requestPath}`,
-          `http://${wowzaHost}:80${requestPath}`
-        ];
-        
-        // Tentar primeira URL
-        wowzaUrl = possibleUrls[0];
+        // Para arquivos de vídeo - usar apenas porta 6980
+        wowzaUrl = `http://${wowzaHost}:6980/content${requestPath}`;
       }
       
       console.log(`🔗 Redirecionando para: ${wowzaUrl}`);
       
       try {
-        let wowzaResponse = null;
+        // Fazer requisição única para a URL correta
+        const wowzaResponse = await fetch(wowzaUrl, {
+          method: req.method,
+          headers: {
+            'Range': req.headers.range || '',
+            'User-Agent': 'Streaming-System/1.0',
+            'Accept': '*/*'
+          },
+          timeout: 10000 // 10 segundos timeout
+        });
         
-        // Para arquivos de vídeo, tentar múltiplas URLs
-        if (isVideoFile) {
-          const possibleUrls = [
-            `http://${wowzaHost}:${wowzaPort}/content${requestPath}`,
-            `http://${wowzaHost}:8086${requestPath}`,
-            `http://${wowzaHost}:80${requestPath}`,
-            `http://${wowzaHost}:8080${requestPath}`,
-            `http://${wowzaHost}:1935/vod/_definst_${requestPath}`,
-            `http://${wowzaHost}:1935/vod${requestPath}`
-          ];
-          
-          for (const testUrl of possibleUrls) {
-            try {
-              console.log(`🔄 Tentando URL: ${testUrl}`);
-              wowzaResponse = await fetch(testUrl, {
-                method: req.method,
-                headers: {
-                  'Range': req.headers.range || '',
-                  'User-Agent': 'Streaming-System/1.0',
-                  'Accept': '*/*'
-                },
-                timeout: 5000 // 5 segundos timeout
-              });
-              
-              if (wowzaResponse.ok) {
-                console.log(`✅ URL funcionando: ${testUrl}`);
-                break;
-              } else {
-                console.log(`❌ URL falhou (${wowzaResponse.status}): ${testUrl}`);
-                wowzaResponse = null;
-              }
-            } catch (error) {
-              console.log(`❌ Erro na URL: ${testUrl} - ${error.message}`);
-              wowzaResponse = null;
-            }
-          }
-        } else {
-          // Para streams, usar porta 1935 diretamente
-          wowzaResponse = await fetch(wowzaUrl, {
-              method: req.method,
-              headers: {
-                'Range': req.headers.range || '',
-                'User-Agent': 'Streaming-System/1.0'
-              },
-              timeout: 5000
-            });
-        }
-        
-        // Se ainda não funcionou, tentar SSH ou outras alternativas
-        if (!wowzaResponse || !wowzaResponse.ok) {
-          console.log(`❌ Todas as URLs falharam para: ${requestPath}`);
+        if (!wowzaResponse.ok) {
+          console.log(`❌ Erro ao acessar vídeo (${wowzaResponse.status}): ${wowzaUrl}`);
           
           return res.status(404).json({ 
             error: 'Vídeo não encontrado',
             details: 'O arquivo não foi encontrado no servidor de streaming',
             requestPath: requestPath,
-            testedUrls: isVideoFile ? [
-              `http://${wowzaHost}:${wowzaPort}/content${requestPath}`,
-              `http://${wowzaHost}:8086${requestPath}`,
-              `http://${wowzaHost}:8080${requestPath}`
-            ] : [wowzaUrl]
+            wowzaUrl: wowzaUrl,
+            status: wowzaResponse.status
           });
         }
         
-        console.log(`✅ Servindo vídeo via Wowza: ${wowzaResponse.url || 'URL não disponível'}`);
+        console.log(`✅ Servindo vídeo via Wowza: ${wowzaUrl}`);
         
         // Copiar headers da resposta do Wowza
         wowzaResponse.headers.forEach((value, key) => {

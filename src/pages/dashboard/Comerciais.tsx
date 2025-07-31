@@ -251,15 +251,10 @@ const Comerciais: React.FC = () => {
       return url;
     }
     
-    // Para arquivos locais, usar URL externa do Wowza
-    const isProduction = window.location.hostname !== 'localhost';
-    const wowzaHost = isProduction ? 'samhost.wcore.com.br' : '51.222.156.223';
-    
     if (url.startsWith('/content')) {
-      return `http://${wowzaHost}:6980${url}`;
-    } else if (url.startsWith('/') || url.includes('content/')) {
-      const cleanPath = url.replace('/content', '').replace(/^\/+/, '');
-      return `http://${wowzaHost}:6980/content/${cleanPath}`;
+      return url;
+    } else if (url.startsWith('/')) {
+      return `/content${url}`;
     }
     
     return url;

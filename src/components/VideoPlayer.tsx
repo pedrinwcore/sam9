@@ -64,16 +64,6 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ playlistVideo, onVideoEnd }) 
       return url;
     }
     
-    // Para vídeos locais, criar URL externa do Wowza
-    if (url.includes('.mp4') || url.includes('.avi') || url.includes('.mov')) {
-      const isProduction = window.location.hostname !== 'localhost';
-      const wowzaHost = isProduction ? 'samhost.wcore.com.br' : '51.222.156.223';
-      
-      // Construir URL externa
-      const cleanPath = url.startsWith('/') ? url : `/${url}`;
-      return `http://${wowzaHost}:6980/content${cleanPath}`;
-    }
-    
     // Para outros arquivos locais, construir o caminho correto
     if (url.startsWith('/') || url.includes('content/')) {
       const cleanPath = url.startsWith('/content') ? url : `/content${url}`;
